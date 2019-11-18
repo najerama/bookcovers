@@ -1,0 +1,30 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: flask-app-tutorial
+  labels:
+    name: flask-app-tutorial
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: flask-app-tutorial
+  template:
+    metadata:
+      name: flask-app-tutorial
+      labels:
+        name: flask-app-tutorial
+    spec:
+      containers:
+        - name: flask-app-tutorial
+          image: gcr.io/eecs-e6893-book-cover/flask-app:v1
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          env:
+            - name: DEBUG_MODE
+              value: "1"
