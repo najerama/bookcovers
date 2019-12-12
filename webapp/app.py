@@ -1,6 +1,9 @@
 import config
+import cv2
 from flask import Flask, request
 from google.cloud import bigquery
+import keras.backend.tensorflow_backend as tb
+from keras.models import load_model
 import math
 import numpy as np
 import pandas as pd
@@ -10,6 +13,7 @@ import scipy.cluster
 from sklearn.externals import joblib 
 from sklearn.neighbors import NearestNeighbors
 
+CNN_MODEL_FILE = "cover_cnn_model.h5"
 INDEXED_BOOKS_CSV = "indexed_books.csv"
 INPUT_FORM_HTML_FILE = "static/inputForm.html"
 KNN_MODEL_FILE = "knn-model.jlib"
@@ -26,6 +30,8 @@ with open(RESULTS_HTML_FILE) as f:
 knn_model = joblib.load(KNN_MODEL_FILE)  
 data = pd.read_csv(INDEXED_BOOKS_CSV)
 indexed_books = data['0'].values
+
+cnn_model = load_model(CNN_MODEL_FILE)
 
 def show_color(colors):
     fig,ax = plt.subplots()
@@ -76,6 +82,13 @@ def image_features(im):
     
     return [round(peak[0],2),round(peak[2],2),round(peak[2],2),round(bright,2),round(colorfullness,2)]
 
+def read_image_for_cnn(im):
+    outputImage = np.zeros((64, 64, 3), dtype="uint8")
+    outputImage[0:64, 0:64] = im.resize((64, 64))
+
+    return np.array([outputImage]) / 255.0
+
+
 @app.route('/')
 def hello():
   return inputForm
@@ -85,13 +98,19 @@ def processImage():
   uploadedFile = request.files['pic']
   im = Image.open(uploadedFile)
 
+  # HACK to get around https://github.com/keras-team/keras/issues/13353
+  tb._SYMBOLIC_SCOPE.value = True
+
+  predictedRating = cnn_model.predict(read_image_for_cnn(im))[0][0]
+  print(predictedRating)
+
   processedIm = image_features(im)
   d,i = knn_model.kneighbors([processedIm])
 
   ASINs = indexed_books[i[0]].tolist()
   print(ASINs)
 
-  return results % tuple(ASINs)
+  return results % tuple([predictedRating] + ASINs)
 
 if __name__ == '__main__':
   app.run(host="0.0.0.0", port=config.PORT, debug=config.DEBUG_MODE)
