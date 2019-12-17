@@ -2,6 +2,7 @@ import config
 import cv2
 from flask import Flask, request
 from google.cloud import bigquery
+from google.oauth2 import service_account
 import keras.backend.tensorflow_backend as tb
 from keras.models import load_model
 import math
@@ -13,13 +14,21 @@ import scipy.cluster
 from sklearn.externals import joblib 
 from sklearn.neighbors import NearestNeighbors
 
+BQ_KEY_FILE = "bq-service-account-key.json"
 CNN_MODEL_FILE = "cover_cnn_model.h5"
 INDEXED_BOOKS_CSV = "indexed_books.csv"
 INPUT_FORM_HTML_FILE = "static/inputForm.html"
 KNN_MODEL_FILE = "knn-model.jlib"
 RESULTS_HTML_FILE = "static/results.html"
 
-#client = bigquery.Client()
+credentials = service_account.Credentials.from_service_account_file(
+    BQ_KEY_FILE,
+    scopes=["https://www.googleapis.com/auth/cloud-platform"]
+)
+client = bigquery.Client(
+    credentials=credentials,
+    project=credentials.project_id
+)
 app = Flask(__name__)
 
 with open(INPUT_FORM_HTML_FILE) as f:
@@ -88,6 +97,21 @@ def read_image_for_cnn(im):
 
     return np.array([outputImage]) / 255.0
 
+def get_similar_ratings(ASINs):
+  ASIN = '"' + '","'.join(ASINs) + '"'
+
+  sql = """
+SELECT *
+FROM
+    `eecs-e6893-book-cover.book_metadata.book_ratings`
+WHERE
+    ASIN in ({})
+  """.format(ASIN)
+  df = client.query(sql).to_dataframe()
+  ratingMap = {}
+  for ind in df.index:
+    ratingMap[df["ASIN"][ind]] = df["rating"][ind]
+  return ratingMap
 
 @app.route('/')
 def hello():
@@ -109,8 +133,17 @@ def processImage():
 
   ASINs = indexed_books[i[0]].tolist()
   print(ASINs)
+  ASINRatingMap = get_similar_ratings(ASINs)
 
-  return results % tuple([predictedRating] + ASINs)
+  finalRes = [predictedRating]
+  for ASIN in ASINs:
+    finalRes.append(ASIN)
+    if ASIN in ASINRatingMap:
+      finalRes.append("Rating: " + str(ASINRatingMap[ASIN]))
+    else:
+      finalRes.append("")
+
+  return results % tuple(finalRes)
 
 if __name__ == '__main__':
   app.run(host="0.0.0.0", port=config.PORT, debug=config.DEBUG_MODE)
