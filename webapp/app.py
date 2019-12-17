@@ -101,7 +101,7 @@ def processImage():
   # HACK to get around https://github.com/keras-team/keras/issues/13353
   tb._SYMBOLIC_SCOPE.value = True
 
-  predictedRating = cnn_model.predict(read_image_for_cnn(im))[0][0]
+  predictedRating = cnn_model.predict(read_image_for_cnn(im))[0][0] * 5
   print(predictedRating)
 
   processedIm = image_features(im)
