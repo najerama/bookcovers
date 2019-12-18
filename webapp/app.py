@@ -9,8 +9,10 @@ import math
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageStat
+import requests
 import scipy
 import scipy.cluster
+import shutil
 from sklearn.externals import joblib 
 from sklearn.neighbors import NearestNeighbors
 
@@ -25,7 +27,7 @@ credentials = service_account.Credentials.from_service_account_file(
     BQ_KEY_FILE,
     scopes=["https://www.googleapis.com/auth/cloud-platform"]
 )
-client = bigquery.Client(
+bq_client = bigquery.Client(
     credentials=credentials,
     project=credentials.project_id
 )
@@ -107,11 +109,38 @@ FROM
 WHERE
     ASIN in ({})
   """.format(ASIN)
-  df = client.query(sql).to_dataframe()
+  df = bq_client.query(sql).to_dataframe()
   ratingMap = {}
   for ind in df.index:
     ratingMap[df["ASIN"][ind]] = df["rating"][ind]
   return ratingMap
+
+def downloadIm(url):
+  response = requests.get(url, stream=True)
+  return Image.open(response.raw)
+
+def get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap):
+  betterASIN = None
+  betterASINRating = 0
+  for ASIN in ASINs:
+    if ASIN in ASINRatingMap and ASINRatingMap[ASIN] > betterASINRating:
+      betterASIN = ASIN
+      betterASINRating = ASINRatingMap[ASIN]
+  if betterASIN == None:
+    return "the book cover is perfect as it is"
+  else:
+    imageGCSPath = "https://storage.googleapis.com/book-covers-e6893/covers/224x224/" + betterASIN + ".jpg"
+    betterProcessedIm = image_features(downloadIm(imageGCSPath))
+    if abs(betterProcessedIm[3] - processedIm[3]) > abs(betterProcessedIm[4] - processedIm[4]):
+      if betterProcessedIm[3] > processedIm[3]:
+        return "you should make the book cover brighter"
+      else:
+        return "you should make the book cover less bright"
+    else:
+      if betterProcessedIm[4] > processedIm[4]:
+        return "you should make the book cover more colorful"
+      else:
+        return "you should make the book cover less colorful"
 
 @app.route('/')
 def hello():
@@ -135,7 +164,9 @@ def processImage():
   print(ASINs)
   ASINRatingMap = get_similar_ratings(ASINs)
 
-  finalRes = [predictedRating]
+  suggestion = get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap)
+
+  finalRes = [predictedRating, suggestion]
   for ASIN in ASINs:
     finalRes.append(ASIN)
     if ASIN in ASINRatingMap:
