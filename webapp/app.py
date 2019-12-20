@@ -1,8 +1,9 @@
 import config
 import cv2
-from flask import Flask, request
+from flask import Flask, request, send_file
 from google.cloud import bigquery
 from google.oauth2 import service_account
+from io import BytesIO
 import keras.backend.tensorflow_backend as tb
 from keras.models import load_model
 import math
@@ -15,6 +16,10 @@ import scipy.cluster
 import shutil
 from sklearn.externals import joblib 
 from sklearn.neighbors import NearestNeighbors
+import time
+
+server = "http://localhost:8080/"
+#server = "http://35.222.73.123/"
 
 BQ_KEY_FILE = "bq-service-account-key.json"
 CNN_MODEL_FILE = "cover_cnn_model_epoch200.h5"
@@ -150,6 +155,8 @@ def hello():
 def processImage():
   uploadedFile = request.files['pic']
   im = Image.open(uploadedFile)
+  fileName = "static/im-" + str(time.time()) + ".jpg"
+  im.save(fileName)
 
   # HACK to get around https://github.com/keras-team/keras/issues/13353
   tb._SYMBOLIC_SCOPE.value = True
@@ -166,7 +173,7 @@ def processImage():
 
   suggestion = get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap)
 
-  finalRes = [round(predictedRating, 2), suggestion]
+  finalRes = [server + fileName, round(predictedRating, 2), suggestion]
   for ASIN in ASINs:
     finalRes.append(ASIN)
     if ASIN in ASINRatingMap:
