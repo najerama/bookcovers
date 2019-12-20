@@ -170,9 +170,9 @@ def processImage():
   for ASIN in ASINs:
     finalRes.append(ASIN)
     if ASIN in ASINRatingMap:
-      finalRes.append("Rating: " + str(ASINRatingMap[ASIN]))
+      finalRes.append("rating = " + str(ASINRatingMap[ASIN]))
     else:
-      finalRes.append("")
+      finalRes.append("unrated")
 
   return results % tuple(finalRes)
 
