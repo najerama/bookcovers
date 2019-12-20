@@ -18,8 +18,8 @@ from sklearn.externals import joblib
 from sklearn.neighbors import NearestNeighbors
 import time
 
-server = "http://localhost:8080/"
-#server = "http://35.222.73.123/"
+#server = "http://localhost:8080/"
+server = "http://35.222.73.123:80/"
 
 BQ_KEY_FILE = "bq-service-account-key.json"
 CNN_MODEL_FILE = "cover_cnn_model_epoch200.h5"
@@ -132,20 +132,20 @@ def get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap):
       betterASIN = ASIN
       betterASINRating = ASINRatingMap[ASIN]
   if betterASIN == None:
-    return "the book cover is perfect as it is"
+    return "Your book cover is perfect as it is!"
   else:
     imageGCSPath = "https://storage.googleapis.com/book-covers-e6893/covers/224x224/" + betterASIN + ".jpg"
     betterProcessedIm = image_features(downloadIm(imageGCSPath))
     if abs(betterProcessedIm[3] - processedIm[3]) > abs(betterProcessedIm[4] - processedIm[4]):
       if betterProcessedIm[3] > processedIm[3]:
-        return "you should make the book cover brighter"
+        return "Suggestion: You should make the book cover brighter"
       else:
-        return "you should make the book cover less bright"
+        return "Suggestion: You should make the book cover less bright"
     else:
       if betterProcessedIm[4] > processedIm[4]:
-        return "you should make the book cover more colorful"
+        return "Suggestion: You should make the book cover more colorful"
       else:
-        return "you should make the book cover less colorful"
+        return "Suggestion: You should make the book cover less colorful"
 
 @app.route('/')
 def hello():
@@ -173,7 +173,7 @@ def processImage():
 
   suggestion = get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap)
 
-  finalRes = [server + fileName, round(predictedRating, 2), suggestion]
+  finalRes = [server + fileName, "Expected rating = " + str(round(predictedRating, 2)), suggestion]
   for ASIN in ASINs:
     finalRes.append(ASIN)
     if ASIN in ASINRatingMap:
