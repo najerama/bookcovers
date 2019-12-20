@@ -17,7 +17,7 @@ from sklearn.externals import joblib
 from sklearn.neighbors import NearestNeighbors
 
 BQ_KEY_FILE = "bq-service-account-key.json"
-CNN_MODEL_FILE = "cover_cnn_model.h5"
+CNN_MODEL_FILE = "cover_cnn_model_epoch200.h5"
 INDEXED_BOOKS_CSV = "indexed_books.csv"
 INPUT_FORM_HTML_FILE = "static/inputForm.html"
 KNN_MODEL_FILE = "knn-model.jlib"
@@ -123,7 +123,7 @@ def get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap):
   betterASIN = None
   betterASINRating = 0
   for ASIN in ASINs:
-    if ASIN in ASINRatingMap and ASINRatingMap[ASIN] > betterASINRating:
+    if ASIN in ASINRatingMap and ASINRatingMap[ASIN] > betterASINRating and ASINRatingMap[ASIN] > predictedRating:
       betterASIN = ASIN
       betterASINRating = ASINRatingMap[ASIN]
   if betterASIN == None:
