@@ -166,11 +166,11 @@ def processImage():
 
   suggestion = get_suggestion(predictedRating, processedIm, ASINs, ASINRatingMap)
 
-  finalRes = [predictedRating, suggestion]
+  finalRes = [round(predictedRating, 2), suggestion]
   for ASIN in ASINs:
     finalRes.append(ASIN)
     if ASIN in ASINRatingMap:
-      finalRes.append("rating = " + str(ASINRatingMap[ASIN]))
+      finalRes.append("rating = " + str(round(ASINRatingMap[ASIN], 2)))
     else:
       finalRes.append("unrated")
 
